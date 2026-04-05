@@ -7,6 +7,8 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 import org.testng.annotations.*;
 import java.time.Duration;
+import java.util.List;
+import java.util.Random;
 
 public class AddToCartTest {
 
@@ -32,8 +34,8 @@ public class AddToCartTest {
     public void testAddProductToCart() throws InterruptedException {
 
         driver.manage().deleteAllCookies();
-
         driver.get("https://www.periplus.com/");
+        System.out.println("Opened Periplus");
 
         WebElement signInBtn = wait.until(ExpectedConditions.elementToBeClickable(
                 By.xpath("//a[contains(text(),'Sign In')]")
@@ -45,6 +47,7 @@ public class AddToCartTest {
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.xpath("//*[contains(text(),'Hi')]")
         ));
+        System.out.println("Login success");
 
         wait.until(ExpectedConditions.invisibilityOfElementLocated(
                 By.className("preloader")
@@ -62,23 +65,41 @@ public class AddToCartTest {
         searchBtn.click();
 
         wait.until(ExpectedConditions.urlContains("Search"));
+        System.out.println("Search results loaded");
 
-        wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.className("single-product")
-        ));
-
-        wait.until(ExpectedConditions.invisibilityOfElementLocated(
-                By.className("preloader")
-        ));
-
-        WebElement product = wait.until(
-                ExpectedConditions.elementToBeClickable(
-                        By.xpath("(//div[@class='single-product'])[5]//a[contains(@href,'/p/')]")
+        List<WebElement> products = wait.until(
+                ExpectedConditions.visibilityOfAllElementsLocatedBy(
+                        By.className("single-product")
                 )
         );
-        product.click();
+
+        int index = new Random().nextInt(products.size());
+        WebElement selectedProduct = products.get(index);
+
+        System.out.println("Clicking product index: " + index);
+
+// scroll dulu
+        ((JavascriptExecutor) driver).executeScript(
+                "arguments[0].scrollIntoView(true);", selectedProduct
+        );
+
+// 🔥 FIX DI SINI
+        WebElement productLink = selectedProduct.findElement(
+                By.xpath(".//a[contains(@href,'/p/')]")
+        );
+
+        wait.until(ExpectedConditions.invisibilityOfElementLocated(By.className("preloader")));
+        wait.until(ExpectedConditions.elementToBeClickable(productLink));
+
+        try {
+            productLink.click();
+        } catch (ElementClickInterceptedException e) {
+            System.out.println("⚠️ Click intercepted, pakai JS click");
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", productLink);
+        }
 
         wait.until(ExpectedConditions.urlContains("/p/"));
+        System.out.println("Product detail page opened");
 
         wait.until(ExpectedConditions.invisibilityOfElementLocated(
                 By.className("preloader")
@@ -97,6 +118,7 @@ public class AddToCartTest {
         Assert.assertTrue(successPopup.isDisplayed(), "Add to cart failed!");
 
         wait.until(ExpectedConditions.invisibilityOf(successPopup));
+        System.out.println("Product added to cart");
 
         wait.until(ExpectedConditions.invisibilityOfElementLocated(
                 By.className("preloader")
@@ -121,6 +143,8 @@ public class AddToCartTest {
         Assert.assertTrue(cartItem.isDisplayed(), "Cart is empty!");
         Assert.assertTrue(checkoutBtn.isDisplayed(), "Checkout button not visible!");
 
+        System.out.println("Cart verification passed");
+
     }
 
     private void login(String email, String password) {
@@ -137,7 +161,7 @@ public class AddToCartTest {
         passwordInput.clear();
         passwordInput.sendKeys(password);
 
-        wait.until(driver -> passwordInput.getAttribute("value").length() > 0);
+        wait.until(driver -> !passwordInput.getAttribute("value").isEmpty());
 
         WebElement loginButton = wait.until(ExpectedConditions.elementToBeClickable(
                 By.xpath("//button | //input[@type='submit']")
