@@ -7,6 +7,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 import org.testng.annotations.*;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -57,7 +58,7 @@ public class AddToCartTest {
                 By.id("filter_name_desktop")
         ));
         searchBox.clear();
-        searchBox.sendKeys("Harry Potter");
+        searchBox.sendKeys("Let Them Theory");
 
         WebElement searchBtn = wait.until(ExpectedConditions.elementToBeClickable(
                 By.cssSelector("form[action*='Search'] button[type='submit']")
@@ -73,17 +74,29 @@ public class AddToCartTest {
                 )
         );
 
-        int index = new Random().nextInt(products.size());
-        WebElement selectedProduct = products.get(index);
+        List<WebElement> availableProducts = new ArrayList<>();
+
+        for (WebElement product : products) {
+            String text = product.getText().toLowerCase();
+
+            if (!text.contains("unavailable") && !text.contains("out of stock")) {
+                availableProducts.add(product);
+            }
+        }
+
+        Assert.assertTrue(availableProducts.size() > 0, "No available products found!");
+
+        int index = new Random().nextInt(availableProducts.size());
+        WebElement selectedProduct = availableProducts.get(index);
+
+        System.out.println("Clicking AVAILABLE product index: " + index);
 
         System.out.println("Clicking product index: " + index);
 
-// scroll dulu
         ((JavascriptExecutor) driver).executeScript(
                 "arguments[0].scrollIntoView(true);", selectedProduct
         );
 
-// 🔥 FIX DI SINI
         WebElement productLink = selectedProduct.findElement(
                 By.xpath(".//a[contains(@href,'/p/')]")
         );
@@ -94,7 +107,7 @@ public class AddToCartTest {
         try {
             productLink.click();
         } catch (ElementClickInterceptedException e) {
-            System.out.println("⚠️ Click intercepted, pakai JS click");
+            System.out.println("Click intercepted, pakai JS click");
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", productLink);
         }
 
